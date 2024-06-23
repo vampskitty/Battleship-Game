@@ -191,14 +191,30 @@ function isPlayer(req, res, next) {
 }
 
 // Middleware for Authorization: Admin or Player (to access their own data)
-function isAdminOrPlayer(req, res, next) {
-  if (req.user.role === 'admin') {
-    return next();
+async function isAdminOrPlayer(req, res, next) {
+  const { id } = req.params;
+
+  try {
+    const game = await client.db("gameDB").collection("games").findOne({ _id: new ObjectId(id) });
+    if (!game) {
+      return res.status(404).send('Game not found');
+    }
+
+    if (req.user.role === 'admin') {
+      return next(); // Admins can access any game
+    }
+    
+    // Check if the user is one of the players associated with the game
+    if (req.user.userId === game.player1.toString() || req.user.userId === game.player2.toString()) {
+      return next();
+    }
+
+    // If neither admin nor player, deny access
+    return res.status(403).send('Access denied');
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal server error');
   }
-  if (req.user.role === 'player' && req.params.id === req.user.userId) {
-    return next();
-  }
-  return res.status(403).send('Access denied');
 }
 
 // CRUD for Players
@@ -357,6 +373,22 @@ function createGame() {
     };
   }
 
+  // Function to fetch player usernames from player IDs
+  async function fetchPlayerUsernames(player1Id, player2Id) {
+    try {
+      const player1 = await client.db("gameDB").collection("players").findOne({ _id: new ObjectId(player1Id) });
+      const player2 = player2Id ? await client.db("gameDB").collection("players").findOne({ _id: new ObjectId(player2Id) }) : null;
+  
+      const username1 = player1 ? player1.username : "Unknown";
+      const username2 = player2 ? player2.username : "Unknown";
+  
+      return { username1, username2 };
+    } catch (error) {
+      console.error("Error fetching player usernames:", error);
+      return { username1: "Unknown", username2: "Unknown" };
+    }
+  }
+
 // Battleship Game Routes
 app.post('/game', verifyToken, isPlayer, async (req, res) => {
     try {
@@ -370,39 +402,39 @@ app.post('/game', verifyToken, isPlayer, async (req, res) => {
   });
 
   // Get game information including player usernames
-  app.get('/game/:id', verifyToken, isAdminOrPlayer, async (req, res) => {
-    const { id } = req.params;
-  
-    try {
-      const game = await client.db("gameDB").collection("games").findOne({ _id: new ObjectId(id) });
-      if (!game) return res.status(404).send('Game not found');
-  
-      // Fetch usernames for player1 and player2 using the function
-      const { username1, username2 } = await fetchPlayerUsernames(game.player1, game.player2);
-  
-      const response = {
-        gameId: game._id,
-        currentPlayer: game.currentPlayer,
-        player1: {
-          userId: game.player1,
-          username: username1
-        },
-        player2: game.player2 ? {
-          userId: game.player2,
-          username: username2
-        } : null,
-        board1: game.board1,
-        board2: game.board2,
-        ships1: game.ships1,
-        ships2: game.ships2
-      };
-  
-      res.send(response);
-    } catch (error) {
-      console.error(error);
-      res.status(500).send('Internal server error');
-    }
-  });
+app.get('/game/:id', verifyToken, isAdminOrPlayer, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const game = await client.db("gameDB").collection("games").findOne({ _id: new ObjectId(id) });
+    if (!game) return res.status(404).send('Game not found');
+
+    // Fetch usernames for player1 and player2 using the function
+    const { username1, username2 } = await fetchPlayerUsernames(game.player1, game.player2);
+
+    const response = {
+      gameId: game._id,
+      currentPlayer: game.currentPlayer,
+      player1: {
+        userId: game.player1,
+        username: username1
+      },
+      player2: game.player2 ? {
+        userId: game.player2,
+        username: username2
+      } : null,
+      board1: game.board1,
+      board2: game.board2,
+      ships1: game.ships1,
+      ships2: game.ships2
+    };
+
+    res.send(response);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal server error');
+  }
+});
   
 // Join a Game (Player 2)
 app.post('/game/:id/join', verifyToken, isPlayer, async (req, res) => {
@@ -676,8 +708,11 @@ app.post('/game/:id/move', verifyToken, isPlayer, async (req, res) => {
           // Game completed, the current player wins
           game.isGameOver = true;
 
-          const winMessage = `Last ship hit! Congratulations! ${req.user.userId} wins the game!`;
-          const loseMessage = `${req.user.userId} has won the game. Better luck next time.`;
+          // Fetch usernames for winner and loser
+          const { username1, username2 } = await fetchPlayerUsernames(game.player1, game.player2);
+
+          const winMessage = `Last ship hit! Congratulations! ${isPlayer1 ? username1 : username2} wins the game!`;
+          const loseMessage = `${isPlayer1 ? username2 : username1} has won the game. Better luck next time.`;
 
           // Update game status in database
           await client.db('gameDB').collection('games').updateOne({ _id: new ObjectId(id) }, { $set: { isGameOver: true, board1: game.board1, board2: game.board2, currentPlayer: game.currentPlayer } });
