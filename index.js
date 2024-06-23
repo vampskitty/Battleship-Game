@@ -195,22 +195,35 @@ async function isAdminOrPlayer(req, res, next) {
   const { id } = req.params;
 
   try {
+    // Check if the endpoint is for a game or a player
     const game = await client.db("gameDB").collection("games").findOne({ _id: new ObjectId(id) });
-    if (!game) {
-      return res.status(404).send('Game not found');
-    }
+    const player = await client.db("gameDB").collection("players").findOne({ _id: new ObjectId(id) });
 
-    if (req.user.role === 'admin') {
-      return next(); // Admins can access any game
-    }
-    
-    // Check if the user is one of the players associated with the game
-    if (req.user.userId === game.player1.toString() || req.user.userId === game.player2.toString()) {
-      return next();
-    }
+    if (game) {
+      // Endpoint is for a game
+      if (req.user.role === 'admin') {
+        return next(); // Admins can access any game
+      }
 
-    // If neither admin nor player, deny access
-    return res.status(403).send('Access denied');
+      // Check if the user is one of the players associated with the game
+      if (req.user.userId === game.player1.toString() || req.user.userId === game.player2.toString()) {
+        return next();
+      }
+
+      // If neither admin nor player, deny access
+      return res.status(403).send('Access denied');
+    } else if (player) {
+      // Endpoint is for a player
+      if (req.user.role === 'admin' || req.user.userId === player._id.toString()) {
+        return next(); // Admins can access any player, players can access their own data
+      }
+
+      // If neither admin nor the player themselves, deny access
+      return res.status(403).send('Access denied');
+    } else {
+      // Neither game nor player found with the given ID
+      return res.status(404).send('Resource not found');
+    }
   } catch (error) {
     console.error(error);
     res.status(500).send('Internal server error');
@@ -243,20 +256,6 @@ app.get('/players', verifyToken, isAdmin, async (req, res) => {
   try {
     const players = await client.db("gameDB").collection("players").find().toArray();
     res.send(players);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Internal server error');
-  }
-});
-
-// Read a Player by ID (Admin and Player can access their own data)
-app.get('/player/:id', verifyToken, isAdminOrPlayer, async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const player = await client.db("gameDB").collection("players").findOne({ _id: new ObjectId(id) });
-    if (player) res.send(player);
-    else res.status(404).send('Player not found');
   } catch (error) {
     console.error(error);
     res.status(500).send('Internal server error');
@@ -401,7 +400,7 @@ app.post('/game', verifyToken, isPlayer, async (req, res) => {
     }
   });
 
-  // Get game information including player usernames
+// Get game information including player usernames
 app.get('/game/:id', verifyToken, isAdminOrPlayer, async (req, res) => {
   const { id } = req.params;
 
