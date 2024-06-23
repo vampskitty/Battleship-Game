@@ -71,7 +71,7 @@ Sink all enemy ships to win! 🏆 Celebrate your triumph or prepare for a rematc
 
 Additional Step: View the Game Status 📊
 Endpoint: GET http://localhost:3000/game/:id
-Keep an eye on the game's progress, view both players' boards, and strategize your next move.
+Keep an eye on the game's progress and view the boards of both players after the game is over.
 
 NOTE: Make sure to replace "your_username", "your_password" and ":id" with your actual credentials when using these endpoints.
 
