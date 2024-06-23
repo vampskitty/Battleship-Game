@@ -1,6 +1,3 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
 name: Build and deploy Node.js app to Azure Web App - Battleship-Game
 
 on:
@@ -14,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Node.js version
         uses: actions/setup-node@v3
@@ -23,12 +21,19 @@ jobs:
 
       - name: npm install, build, and test
         run: |
+          echo "Installing dependencies"
           npm install
+          echo "Building application"
           npm run build --if-present
+          echo "Running tests"
           npm run test --if-present
+        env:
+          CI: true
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+        run: |
+          echo "Zipping files"
+          zip release.zip ./* -r
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
@@ -50,7 +55,9 @@ jobs:
           name: node-app
 
       - name: Unzip artifact for deployment
-        run: unzip release.zip
+        run: |
+          echo "Unzipping files"
+          unzip release.zip
       
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
