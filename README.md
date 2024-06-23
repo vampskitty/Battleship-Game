@@ -1,6 +1,8 @@
 🚢 Welcome to Battleship! Ready to Conquer the Seas? 🌊
 
-Step 1: Sign Up or Log In
+Ahoy, captain! To start the adventure, set sail to https://battleship-game.azurewebsites.net/endpoint and adjust the API endpoint for each call in your Postman configuration to match your specific needs and click SEND! Ensure your HTTP method (POST, GET, PATCH, DELETE) aligns with the required action. 🏴‍☠️
+
+Step 1: Sign Up or Log In 🚀
 New Player? Sign up using the endpoint. Don't worry; it's quick and easy!
 Endpoint: POST /player/signup
 Body:
@@ -17,7 +19,6 @@ Body:
   "password": "your_password"
 }
 
-
 Step 2: Create a Game 🎮
 Use this endpoint to start a new game. Upon success, you'll receive a game ID. Keep it safe for future use!
 Endpoint: POST /game
@@ -28,7 +29,6 @@ Body:
   "password": "your_password"
 }
 
-
 Step 3: Join the Battle ⚔️
 Join an existing game as Player 2 using the game ID with the endpoint below.
 Endpoint: POST /game/:id/join
@@ -38,7 +38,6 @@ Body:
   "username": "your_username",
   "password": "your_password"
 }
-
 
 Step 4: Place Your Fleet 🚢
 Place your ships using the endpoint. Choose wisely; strategic positioning is key! Ensure all ships are placed to start the showdown! Remember to replace the 'x' and 'y' values with your actual coordinates, and similarly, adjust the direction ('vertical' or 'horizontal') as needed.
@@ -64,7 +63,6 @@ Body:
   "x": 0,
   "y": 0
 }
-
 
 Step 6: Claim Victory
 Sink all enemy ships to win! 🏆 Celebrate your triumph or prepare for a rematch!
